@@ -1,0 +1,291 @@
+# -*- coding: utf-8 -*-
+"""
+Spyder Editor
+
+This is a temporary script file.
+"""
+
+import re
+import os
+from urllib.parse import urlparse, unquote
+import yaml
+import requests
+
+def findurlinstring(str):
+    """
+    Ricerca ed estrae da una stringa una URL
+
+    Parameters
+    ----------
+    str : stringa
+        
+    Returns
+    -------
+    Lista delle URL
+    
+    Reference
+    -------
+    import re
+    """
+    #url = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\), ]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',str) 
+    url = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\)]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',str) 
+    #url = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', str)
+    return url 
+
+def lowerlist(list):
+    """
+   Rende lower case tutti gli elementi di una lista
+
+    Parameters
+    ----------
+    lista : list input
+        
+    Returns
+    -------
+    Lista delle URL
+    
+    Reference
+    -------
+    none
+    """
+    lowered_list = []
+    for x in list:
+        lowered_list.append(x.lower())
+    return(lowered_list)
+    
+def url2filename(url):
+    """
+    Parsa una url - che referenzia un file - estraendo il nome del file ed altre info (vedere Returns)
+
+    Parameters
+    ----------
+    url : url da esaminare
+        
+    Returns
+    -------
+    Nome del file (senza percent encoded characters)
+    estensione del file
+    nome del file (con eventuali percent encoded characters)
+    url (ricevuta in input)
+    
+    Reference
+    -------
+    import os
+    from urllib.parse import urlparse, unquote
+    """    
+    try:
+        filename_quote=os.path.basename(urlparse(url).path)
+        filename=unquote(os.path.basename(urlparse(url).path))
+        filename_without_extension, file_extension = os.path.splitext(filename_quote)
+    except:
+        print("url2filename error")
+    return filename, file_extension, filename_quote, url
+
+def importbyyaml(filename):
+    """
+    Legge le configurazioni da un file yaml
+
+    Parameters
+    ----------
+    filename: nome del file
+        
+    Returns
+    -------
+    yamlcontent: dizionario con valori del file yaml
+    
+    Reference
+    -------
+    import yaml
+    """    
+    with open(filename,'r', encoding="utf8") as f:
+        yamlcontent = yaml.safe_load(f)
+    return yamlcontent
+
+def eraseduplicate(listdupl):
+    """
+    Elimina i valori duplicati di una lista
+    NOTA: viene modificato l'ordine degli elementi in lista
+
+    Parameters
+    ----------
+    listdupl: lista da ripulirae
+        
+    Returns
+    -------
+    lista ripulita
+    
+    Reference
+    -------
+    none
+    """  
+    listdupl[:] = list(set(listdupl))
+    return listdupl
+
+
+def filedownloader(url,name):
+    """
+    Scarica file immagine da URL
+
+    Parameters
+    ----------
+    url : url dell'immagine'
+    name : nome del file immagine che viene creato
+
+    Returns
+    -------
+    None.
+    
+    Reference
+    -------
+    import requests
+    """
+    try:
+        response = requests.get(url)
+        file = open(name, "wb")
+        file.write(response.content)
+        file.close()
+        result=1
+    #print("Scaricato il file: " + name)
+    except:
+        result=0
+    return result, url, name
+
+# Reference gile YAML con elenco estensioni da estrarre
+filenameyaml = "ext.yaml"
+
+# f = open('untitled.txt', 'r', encoding="utf8")
+var_lettura = open('untitled.txt', 'r', encoding="utf8").read()
+# print("Apertura del file")
+# # Apertura del file che contiene le URL
+# f = open('untitled.txt', 'r', encoding="utf8")
+# i = f.readlines()
+# f.close()
+
+
+
+
+list_url = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',var_lettura) 
+print("++++++ lista creata da RE:")
+print("Lunghezza lista RE: "+ str(len(list_url)))
+print(list_url)
+# print("Creazione della lista delle URL")
+# # Creazione della lista che contiene l'elenco delle URL
+# list_url=[]
+# for n in i:
+#     print(str(findurlinstring(n)))
+#     list_url += findurlinstring(n)
+# print(str(list_url))
+# print("La lista contiene" + str(len(list_url)) + " URL")
+
+print("Normalizzazione (lower case) della lista")
+# Normalizzazione case (all lower)
+lower_list = lowerlist(list_url)
+#print(lowerlist(list_url))
+
+print("Eliminazione del dupiicati")
+# Eliminazione dei duplicati
+lower_list_singlevalue = eraseduplicate(lower_list)
+#print(lower_list_singlevalue)
+print("La lista senza duplicati contiene "+ str(len(lower_list_singlevalue)) + " URL")
+print("+++++++++++++++++++++ Lista senza duplicati")
+#print(lower_list_singlevalue)
+
+list_url_file = []
+for n in lower_list_singlevalue:
+    filename, file_extension, filename_quote, url = url2filename(n)
+    if file_extension in importbyyaml(filenameyaml)["extension"]:
+        dict_url_filename = {'url':url,'filename':filename}
+        #print(dict_url_filename)
+        list_url_file.append(dict_url_filename)
+print("+++++++++++++ lista")
+print("la lista finale ha: " + str(len(list_url_file)))
+print(list_url_file)
+
+
+for i in list_url_file:
+    url = i['url']
+    filename = i['filename']
+    #filedownloader(url,filename)
+    result, url, name = filedownloader(url,filename)
+    if result == 1:
+        print("Scaricato con successo il file: " +  name)
+    else:
+        print("Il download non è andato a buon fine")
+
+
+"""
+https://linuxhint.com/convert-list-lowercase-elements-python/#:~:text=To%20convert%20list%20elements%20into%20lowercase%20elements%20in%20Python%2C%20the,of%20the%20list%20into%20lowercase.
+Python Lowercase Elements in a List
+
+https://realpython.com/python-in-operator/
+Python's "in" and "not in" Operators: Check for Membership
+
+https://www.slingacademy.com/article/python-get-file-name-and-extension-from-url/
+Python: 3 Ways to Get File Name and Extension from URL
+
+https://pellacini.di.uniroma1.it/teaching/fondamenti12/lecture07.html#:~:text=Un%20dizionario%20in%20Python%20%C3%A8,stesso%20valore%20della%20chiave%20key.
+Dizionari
+
+https://docs.python.org/3/library/urllib.parse.html
+urllib.parse — Parse URLs into components
+
+https://stackoverflow.com/questions/18727347/how-to-extract-a-filename-from-a-url-and-append-a-word-to-it
+How to extract a filename from a URL and append a word to it?
+
+https://www.andreaminini.com/python/try-except-python
+L'istruzione try except in Python
+
+https://www.delftstack.com/it/howto/python/how-to-concatenate-two-or-multiple-lists-in-python/
+Come concatenare due o più liste in Python
+
+https://stackoverflow.com/questions/9233027/unicodedecodeerror-charmap-codec-cant-decode-byte-x-in-position-y-character
+UnicodeDecodeError: 'charmap' codec can't decode byte X in position Y: character maps to <undefined>
+
+https://realpython.com/python-in-operator/
+Python's "in" and "not in" Operators: Check for Membership
+
+https://earthly.dev/blog/yaml-in-python/
+How to Work with YAML in Python
+
+https://stackoverflow.com/questions/32916092/parse-yaml-into-a-list-in-python
+Parse yaml into a list in python
+
+https://www.html.it/pag/15614/dizionari/
+Dizionari
+
+https://www.techiedelight.com/it/remove-duplicates-from-a-list-in-python/
+Rimuovere i valori duplicati da un elenco Python
+
+https://www.programmareinpython.it/gestire-file-cartelle-e-file-system-con-python/creare-leggere-e-scrivere-file-testuali-in-python/
+Creare, Leggere e Scrivere File Testuali
+
+
+puoi tradurre in linguaggio umano la seguente istruzione python: re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\), ]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',str) 
+
+ChatGPT
+Certo, quella riga di codice Python utilizza la libreria re (espressioni regolari) per trovare tutti i collegamenti (URL) presenti in una stringa str. Ecco una spiegazione più dettagliata:
+
+re.findall: Questa è una funzione della libreria re che cerca tutte le corrispondenze di un modello all'interno di una stringa e restituisce una lista di tutte le corrispondenze trovate.
+
+'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\), ]|(?:%[0-9a-fA-F][0-9a-fA-F]))+': Questo è il modello di espressione regolare utilizzato per trovare gli URL. Ecco cosa sta facendo:
+
+http[s]?://: Questa parte del modello corrisponde a "http://" o "https://", l'indicazione del protocollo nei collegamenti web.
+
+(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\), ]|(?:%[0-9a-fA-F][0-9a-fA-F]))+: Questa è una serie di caratteri consentiti in un URL. Significa che il modello cerca una sequenza di uno o più di questi caratteri.
+
+[a-zA-Z]: Corrisponde a una lettera maiuscola o minuscola.
+
+[0-9]: Corrisponde a un numero.
+
+[$-_@.&+]: Corrisponde a alcuni caratteri speciali comuni in un URL.
+
+[!*\(\), ]: Corrisponde ad altri caratteri speciali.
+
+(?:%[0-9a-fA-F][0-9a-fA-F]): Questa parte gestisce gli escape dei caratteri speciali nell'URL, come '%20' per uno spazio. (?: ... ) è un gruppo non catturante.
+
++: Questo indica che la sequenza di caratteri descritta sopra deve apparire una o più volte consecutive.
+
+Quindi, la riga di codice cerca tutti gli URL nella stringa str e li restituisce come una lista di corrispondenze trovate.
+
+
+"""
